@@ -707,3 +707,18 @@ iab.open('http://url-that-fails-whitelist.com', 'random_string'); // loads in th
 iab.open('http://url-that-fails-whitelist.com', 'random_string', 'location=no'); // loads in the InAppBrowser, no location bar
 
 ```
+
+## iab-open-external
+
+Code that is executed inside the `InAppBrowser` can call `window.open` using the `iab-open-external://`
+scheme in order to open a URL in the system browser instead of the `InAppBrowser`. In this case,
+the host of the URL that is passed to `window.open` should itself be a URL that is percent-encoded.
+
+For example, the following code when called from inside the `InAppBrowser` would open `https://www.example.com/`
+using the system browser instead.
+
+```javascript
+var encoded_url = encodeURIComponent('https://www.example.com/');
+var open_external_url = 'iab-open-external://' + encoded_url;
+window.open(open_external_url);
+```

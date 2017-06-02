@@ -429,6 +429,17 @@
             return NO;
         }
     }
+    // If the URL uses the iab-open-external protocol, treat the host component as a percent-encoded
+    // URL that should be opened in the system browser.
+    else if ([[url scheme] isEqualToString:@"iab-open-external"]) {
+        // Decode external URL
+        NSString* externalUrlStr = [[url host] stringByRemovingPercentEncoding];
+        NSURL* externalUrl = [[NSURL alloc] initWithString:externalUrlStr];
+        // Open external URL in system browser
+        [[UIApplication sharedApplication] openURL:externalUrl options:@{} completionHandler:nil];
+        // Prevent the webview from opening the URL
+        return NO;
+    }
     //if is an app store link, let the system handle it, otherwise it fails to load it
     else if ([[ url scheme] isEqualToString:@"itms-appss"] || [[ url scheme] isEqualToString:@"itms-apps"]) {
         [theWebView stopLoading];
