@@ -209,6 +209,8 @@
         self.inAppBrowserViewController.webView.suppressesIncrementalRendering = browserOptions.suppressesincrementalrendering;
     }
 
+    [self.inAppBrowserViewController setValidateSsl:browserOptions.validatessl];
+
     [self.inAppBrowserViewController navigateTo:url];
     if (!browserOptions.hidden) {
         [self show:nil];
@@ -504,6 +506,7 @@
 @implementation CDVInAppBrowserViewController
 
 @synthesize currentURL;
+@synthesize validateSsl;
 
 - (id)initWithUserAgent:(NSString*)userAgent prevUserAgent:(NSString*)prevUserAgent browserOptions: (CDVInAppBrowserOptions*) browserOptions
 {
@@ -818,6 +821,7 @@
 
 - (void)navigateTo:(NSURL*)url
 {
+    _baseURL = url;
     NSURLRequest* request = [NSURLRequest requestWithURL:url];
 
     if (_userAgentLockToken != 0) {
@@ -888,10 +892,21 @@
 - (BOOL)webView:(UIWebView*)theWebView shouldStartLoadWithRequest:(NSURLRequest*)request navigationType:(UIWebViewNavigationType)navigationType
 {
     BOOL isTopLevelNavigation = [request.URL isEqual:[request mainDocumentURL]];
+    BOOL isSecuredUrl = [[request.URL scheme] isEqualToString:@"https"];
 
     if (isTopLevelNavigation) {
         self.currentURL = request.URL;
     }
+
+    if (isSecuredUrl && self.validateSsl == NO) {
+        // iOS automatically treats untrusted certificates as errors, so we must use NSURLConnection
+        // to ignore invalid certificates. We cancel the original request and store it until we have
+        // accepted the invalid certificate.
+        self.urlRequest = request;
+        NSURLConnection* connection = [[NSURLConnection alloc] initWithRequest:request delegate:self];
+        return NO;
+    }
+
     return [self.navigationDelegate webView:theWebView shouldStartLoadWithRequest:request navigationType:navigationType];
 }
 
@@ -936,6 +951,25 @@
     self.addressLabel.text = NSLocalizedString(@"Load Error", nil);
 
     [self.navigationDelegate webView:theWebView didFailLoadWithError:error];
+}
+
+#pragma mark NSURLConnectionDataDelegate
+
+- (void)connection:(NSURLConnection *)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
+    // Allow self-signed SSL certificates from URLs that have the same host as the base URL.
+    if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust] && [challenge.protectionSpace.host isEqualToString:_baseURL.host]) {
+        [challenge.sender useCredential:[NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust] forAuthenticationChallenge:challenge];
+    }
+
+    [challenge.sender continueWithoutCredentialForAuthenticationChallenge:challenge];
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+    // At this point we should have accepted the self-signed certificate, so we can re-enable SSL
+    // validation and reload the original request.
+    self.validateSsl = YES;
+    [connection cancel];
+    [self.webView loadRequest:self.urlRequest];
 }
 
 #pragma mark CDVScreenOrientationDelegate
@@ -988,6 +1022,7 @@
         self.suppressesincrementalrendering = NO;
         self.hidden = NO;
         self.disallowoverscroll = NO;
+        self.validatessl = YES;
     }
 
     return self;
