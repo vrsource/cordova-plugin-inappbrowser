@@ -63,24 +63,31 @@
 @property (nonatomic, assign) BOOL suppressesincrementalrendering;
 @property (nonatomic, assign) BOOL hidden;
 @property (nonatomic, assign) BOOL disallowoverscroll;
+@property (nonatomic, assign) BOOL validatessl;
 
 + (CDVInAppBrowserOptions*)parseOptions:(NSString*)options;
 
 @end
 
-@interface CDVInAppBrowserViewController : UIViewController <UIWebViewDelegate, CDVScreenOrientationDelegate>{
+@interface CDVInAppBrowserViewController : UIViewController <UIWebViewDelegate, CDVScreenOrientationDelegate, NSURLConnectionDataDelegate>{
     @private
     NSString* _userAgent;
     NSString* _prevUserAgent;
     NSInteger _userAgentLockToken;
     CDVInAppBrowserOptions *_browserOptions;
-    
+
+    /**
+     *  The URL that is navigated to. When "validatessl=no" is passed, we only allow untrusted
+     *  certificates from this host.
+     */
+    NSURL* _baseURL;
+
 #ifdef __CORDOVA_4_0_0
     CDVUIWebViewDelegate* _webViewDelegate;
 #else
     CDVWebViewDelegate* _webViewDelegate;
 #endif
-    
+
 }
 
 @property (nonatomic, strong) IBOutlet UIWebView* webView;
@@ -94,6 +101,13 @@
 @property (nonatomic, weak) id <CDVScreenOrientationDelegate> orientationDelegate;
 @property (nonatomic, weak) CDVInAppBrowser* navigationDelegate;
 @property (nonatomic) NSURL* currentURL;
+@property (nonatomic, assign) BOOL validateSsl;
+
+/**
+ *  Stores the original request when "validatessl=no" is passed so that we can bypass any untrusted
+ *  certificate errors using NSURLConnection and then finish loading the request afterwards.
+ */
+@property (nonatomic, weak) NSURLRequest* urlRequest;
 
 - (void)close;
 - (void)navigateTo:(NSURL*)url;
