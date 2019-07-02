@@ -62,6 +62,8 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import Java.net.URLDecoder;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -908,6 +910,15 @@ public class InAppBrowser extends CordovaPlugin {
                 } catch (android.content.ActivityNotFoundException e) {
                     LOG.e(LOG_TAG, "Error sending sms " + url + ":" + e.toString());
                 }
+            }
+            // If the URL uses the iab-open-external protocol, treat the host component as a percent-encoded
+            // URL that should be opened in the system browser.
+            else if (url.startsWith("iab-open-external:")) {
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                Uri encodedUri = Uri.parse(url);
+                String decodedUrl = URLDecoder.decode(encodedUri.host);
+                openExternal(decodedUrl);
+                return true;
             }
             return false;
         }
