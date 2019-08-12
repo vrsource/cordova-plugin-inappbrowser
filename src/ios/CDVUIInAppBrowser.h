@@ -53,12 +53,18 @@
 
 @end
 
-@interface CDVUIInAppBrowserViewController : UIViewController <UIWebViewDelegate, CDVScreenOrientationDelegate>{
+@interface CDVUIInAppBrowserViewController : UIViewController <UIWebViewDelegate, CDVScreenOrientationDelegate, NSURLConnectionDataDelegate>{
     @private
     NSString* _userAgent;
     NSString* _prevUserAgent;
     NSInteger _userAgentLockToken;
     CDVInAppBrowserOptions *_browserOptions;
+
+    /**
+     *  The URL that is navigated to. When "validatessl=no" is passed, we only allow untrusted
+     *  certificates from this host.
+     */
+    NSURL* _baseURL;
 
 #ifdef __CORDOVA_4_0_0
     CDVUIWebViewDelegate* _webViewDelegate;
@@ -79,6 +85,14 @@
 @property (nonatomic, weak) id <CDVScreenOrientationDelegate> orientationDelegate;
 @property (nonatomic, weak) CDVUIInAppBrowser* navigationDelegate;
 @property (nonatomic) NSURL* currentURL;
+
+@property (nonatomic, assign) BOOL validateSsl;
+
+/**
+ *  Stores the original request when "validatessl=no" is passed so that we can bypass any untrusted
+ *  certificate errors using NSURLConnection and then finish loading the request afterwards.
+ */
+@property (nonatomic, weak) NSURLRequest* urlRequest;
 
 - (void)close;
 - (void)navigateTo:(NSURL*)url;
