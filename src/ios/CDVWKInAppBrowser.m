@@ -535,6 +535,18 @@ static CDVWKInAppBrowser* instance = nil;
         useBeforeLoad = YES;
     }
 
+    // If the URL uses the iab-open-external protocol, treat the host component as a percent-encoded
+    // URL that should be opened in the system browser.
+    if ([[url scheme] isEqualToString:@"iab-open-external"]) {
+        // Decode external URL
+        NSString* externalUrlStr = [[url host] stringByRemovingPercentEncoding];
+        NSURL* externalUrl = [[NSURL alloc] initWithString:externalUrlStr];
+        // Open external URL in system browser
+        [[UIApplication sharedApplication] openURL:externalUrl options:@{} completionHandler:nil];
+        // Prevent the webview from opening the URL
+        shouldStart = NO;
+    }
+
     // When beforeload, on first URL change, initiate JS callback. Only after the beforeload event, continue.
     if (_waitForBeforeload && useBeforeLoad) {
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
